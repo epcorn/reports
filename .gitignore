@@ -26,7 +26,6 @@ uploads/
 *.sw?
 
 # Ignore all files inside files/ and temp/ directories
-files/*
 temp/*
 
 # But keep the directories
