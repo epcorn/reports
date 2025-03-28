@@ -426,7 +426,6 @@ export const editReport = async (req, res) => {
 
     if (req.files.file) {
       const data = await uploadFile(req.files.file);
-      console.log(data);
       report.link = data;
       report.approved = true;
       await report.save();
@@ -511,7 +510,7 @@ export const sendEmail = async (req, res) => {
   try {
     const report = await Report.findById(mailId);
     let reportQuot = `${report.reportType} Report`;
-
+    console.log(report);
     const files = [{ name: `${report.reportName} Report`, link: report.link }];
     if (report.quotation) {
       reportQuot += " And Quotation";
@@ -525,6 +524,7 @@ export const sendEmail = async (req, res) => {
 
     for (let i = 0; i < files.length; i++) {
       const fileType = files[i].link.split(".").pop();
+      console.log(files[i]);
       const result = await axios.get(files[i].link, {
         responseType: "arraybuffer",
       });
