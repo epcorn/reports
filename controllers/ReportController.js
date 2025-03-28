@@ -596,8 +596,6 @@ export const sendEmail = async (req, res) => {
 
     res.status(200).json({ msg: "Email has been sent" });
   } catch (error) {
-    console.log(error);
-    console.log(error.response.body);
     return res.status(500).json({ msg: "Server error, try again later" });
   }
 };
