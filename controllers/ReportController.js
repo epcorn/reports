@@ -413,8 +413,7 @@ export const editReport = async (req, res) => {
     if (!report) return res.status(404).json({ msg: "Report not found" });
 
     if (req.files.file) {
-      const data = await uploadFile(req.files.file);
-      report.link = data;
+      report.link = await uploadFile(req.files.file);
       report.approved = true;
       await report.save();
     }
