@@ -220,29 +220,34 @@ const capitalLetter = (phrase) => {
 export const generateReport = async (req, res) => {
   const { id } = req.params;
   try {
-    const report = await Report.findById(id);
-    if (!report) return res.status(404).json({ msg: "Report Not Found" });
+    const report = await Report.findOne({ _id: id });
+    if (!report) return res.stats(404).json({ msg: "Report Not Found" });
 
-    const admin = await Admin.findOne({
-      "template.templateType": report.templateType,
-      "template.reportType": report.reportType,
-    }).lean();
-    const fileUrl = admin?.template?.file;
-    if (!fileUrl) {
-      return res
-        .status(400)
-        .json({ msg: "No matching template found while generating" });
-    }
-    const resp = await axios.get(fileUrl, {
+    const adminValues = await Admin.find();
+
+    let file = "",
+      width = 18;
+    adminValues.forEach((x) => {
+      if (
+        x.template &&
+        x.template.templateType === report.templateType &&
+        x.template.reportType === report.reportType
+      ) {
+        file = x.template.file;
+      }
+    });
+
+    const resp = await axios.get(file, {
       responseType: "arraybuffer",
     });
     const template = Buffer.from(resp.data);
 
-    let width = report.templateType !== "Single Picture" ? 9 : 18;
+    if (report.templateType !== "Single Picture") width = 9;
 
     const buffer = await newdoc.createReport({
       cmdDelimiter: ["{", "}"],
       template,
+
       additionalJsContext: {
         meetTo: report.meetDetails.name,
         meetContact: report.meetDetails.contact,
@@ -270,59 +275,42 @@ export const generateReport = async (req, res) => {
         },
       },
     });
-    const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-    if (buffer.length > MAX_FILE_SIZE) {
-      {
-        /* uncomment this code to get file to be uplad manually maybe after compression */
-      }
-
-      // const filePath = path.resolve(
-      //   __dirname,
-      //   "../files",
-      //   `${report.reportName}.docx`
-      // );
-      // await fs.writeFile(filePath, buffer);
-      const fileSizeInMB = (buffer.length / (1024 * 1024)).toFixed(2);
-      return res.status(400).json({
-        msg: `File size is too large (${fileSizeInMB} MB). Maximum allowed size is 10 MB. Please contact Admin for assistance.`,
-      });
-    }
-    const result = await streamUploadToCloudinary(
-      buffer,
-      `${report.reportName}.docx`
+    fs.writeFileSync(
+      path.resolve(__dirname, "../files/", `${report.reportName}.docx`),
+      buffer
     );
-    report.link = result.secure_url;
-    await report.save();
+
+    const size = fs.statSync(
+      path.resolve(__dirname, "../files/", `${report.reportName}.docx`)
+    );
+
+    if (size.size < 10000000) {
+      const result = await cloudinary.uploader.upload(
+        `files/${report.reportName}.docx`,
+        {
+          resource_type: "raw",
+          use_filename: true,
+          folder: "reports",
+        }
+      );
+      report.link = result.secure_url;
+      await report.save();
+
+      fs.unlinkSync(`./files/${report.reportName}.docx`);
+    } else {
+      fs.unlinkSync(`./files/${report.reportName}.docx`);
+      return res
+        .status(200)
+        .json({ msg: "File size is too large contact Admin" });
+    }
 
     res.status(201).json({ msg: "Report successfully generated." });
   } catch (error) {
-    console.log("Error genereating Reports:", error);
+    console.log(error);
     return res.status(500).json({ msg: "Server error, try again later" });
   }
 };
-
-function streamUploadToCloudinary(buffer, filename) {
-  const newFilename = filename.split(" ").join("_");
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: "auto",
-        use_filename: true,
-        folder: "reports",
-        public_id: newFilename,
-      },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
-    );
-
-    const bufferStream = new Stream.PassThrough();
-    bufferStream.end(buffer);
-    bufferStream.pipe(uploadStream);
-  });
-}
 
 export const deleteReport = async (req, res) => {
   try {
