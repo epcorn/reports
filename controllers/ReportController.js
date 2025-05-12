@@ -314,7 +314,7 @@ export const generateReport = async (req, res) => {
 
 export const deleteReport = async (req, res) => {
   try {
-    return res.json({ msg: "Contact Admin for deletion" });
+   // return res.json({ msg: "Contact Admin for deletion" });
     const report = await Report.findById(req.params.id);
     if (!report) return res.status(404).json({ msg: "Report not found" });
 
