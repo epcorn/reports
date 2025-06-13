@@ -143,7 +143,7 @@ export const contractDetails = createAsyncThunk(
   async (search, thunkAPI) => {
     try {
       const res = await axios.get(
-        `https://cqr1.herokuapp.com/api/contractDetails?search=${search}`
+        `https://contract-qr-3c371a8d88c1.herokuapp.com/api/contractDetails?search=${search}`
       );
       return res.data;
     } catch (error) {
